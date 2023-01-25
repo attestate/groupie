@@ -4,9 +4,8 @@
 
 > "A fan following a band's events with the hope of meeting them."
 
-**This software:** A lightweight node.js server that follows all events of an
-Ethereum smart contract making them convenviently available via a paginated and
-always up-to-date HTTP API.
+**This software:** A node.js server for following Ethereum smart contract
+events and making them available via lmdb.
 
 ## requirements
 
