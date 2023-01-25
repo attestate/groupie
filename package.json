@@ -4,12 +4,14 @@
   "description": "A lightweight node.js server that follows all events of an Ethereum smart contract and makes it convenviently available via a RESTful HTTP resource.",
   "main": "src/index.mjs",
   "scripts": {
-    "dev": "DEBUG=attestate/* node src/index.mjs",
+    "dev": "DEBUG=attestate/* node src/worker.mjs",
     "test": "ava"
   },
   "author": "Tim Daubenschütz <tim@daubenschuetz.de> (https://proofinprogress.com/)",
   "license": "UNLICENSED",
   "dependencies": {
+    "@attestate/crawler": "0.0.1",
+    "@attestate/crawler-call-block-logs": "0.1.0",
     "level": "8.0.0"
   },
   "devDependencies": {
