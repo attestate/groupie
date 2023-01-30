@@ -5,6 +5,7 @@ import test from "ava";
 
 import { provision, index, persist } from "../src/database.mjs";
 
+// TODO: Fix tests with new indexing scheme
 test.serial("persisting epoch", async (t) => {
   const path = "./testdb";
   const indexName = "test";

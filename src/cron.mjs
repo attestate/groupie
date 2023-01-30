@@ -1,6 +1,4 @@
 // @format
-import cron from "cron";
-
 import { run } from "./worker.mjs";
 
 function sleep(time) {

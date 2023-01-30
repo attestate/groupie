@@ -11,30 +11,45 @@ import { persist, provision, index } from "./database.mjs";
 import { blockNumber } from "./eth.mjs";
 
 const path = `${env.DATA_DIR}/events/`;
+// TODO: Change this value to something else
 const indexName = "test";
 const db = provision(path, indexName);
 const cursor = index(db);
+const bnCursor = (
+  (db) => (blockNumber) =>
+    persist(db, blockNumber)
+)(db);
 
 async function loadHandler(line) {
   line = JSON.parse(line);
   for await (const log of line) {
-    await cursor(log.transactionHash, log);
+    await cursor(log);
   }
 }
 
-const crawlPath = (start, end, topic0, topic1) => [
+const crawlPath = (start, end, address, topics, stepSize) => [
   {
     name: "call-block-logs",
     extractor: {
-      module: blockLogs.extractor,
-      args: [start, end],
+      module: {
+        init: blockLogs.extractor.init,
+        update: async (message) => {
+          const { fromBlock } = message.params[0];
+          // PROBLEM: If we always persist the biggest seen number, then upon
+          // crashing within a crawl, we could be missing some blocks that
+          // haven't passed this stage yet.
+          await bnCursor(parseInt(fromBlock, 16));
+          return blockLogs.extractor.update(message);
+        },
+      },
+      args: [start, end, address, topics, stepSize],
       output: {
         path: resolve(env.DATA_DIR, "call-block-logs-extraction"),
       },
     },
     transformer: {
       module: blockLogs.transformer,
-      args: [topic0, topic1],
+      args: [],
       input: {
         path: resolve(env.DATA_DIR, "call-block-logs-extraction"),
       },
@@ -59,8 +74,9 @@ export async function run() {
   const path = crawlPath(
     localBlockNumber,
     latestBlockNumber,
-    config.topics[0],
-    config.topics[1]
+    config?.contract?.address,
+    config?.topics,
+    config.blocks.stepSize
   );
   await crawl(path, config.crawler);
   await persist(db, latestBlockNumber);

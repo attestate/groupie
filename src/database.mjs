@@ -1,6 +1,8 @@
 // @format
 import { open } from "lmdb";
 
+import log from "./logger.mjs";
+
 export function provision(path, indexName) {
   if (!indexName) throw new Error(`"indexName" must be defined`);
   const db = new open({
@@ -10,9 +12,7 @@ export function provision(path, indexName) {
     connection: db,
     index: {
       terminal: ":",
-      prefix: `${indexName}:`,
-      start: `${indexName}_START`,
-      end: `${indexName}_END`,
+      prefix: `${indexName}`,
     },
   };
 }
@@ -24,6 +24,7 @@ export async function persist(configuration, epoch) {
   const { connection } = configuration;
   const local = await connection.get(key);
   if ((!local && local != 0) || epoch > local) {
+    log(`Persisting epoch: ${epoch}`);
     await connection.put(key, epoch);
     return epoch;
   }
@@ -32,17 +33,9 @@ export async function persist(configuration, epoch) {
 
 export function index(configuration) {
   const { connection, index } = configuration;
-  return async (key, value) => {
-    const indexKey = `${index.prefix}${key}`;
-    const cursor = await connection.get(index.end);
-    if (!cursor) {
-      await connection.put(index.start, indexKey);
-      await connection.put(index.end, indexKey);
-      await connection.put(key, value);
-      return;
-    }
-    await connection.put(cursor, indexKey);
-    await connection.put(index.end, indexKey);
-    await connection.put(key, value);
+  return async (value) => {
+    const lgIndex = `${index.prefix}${index.terminal}${value.blockNumber}${index.terminal}${value.transactionIndex}`;
+    await connection.put(lgIndex, value.transactionHash);
+    await connection.put(value.transactionHash, value);
   };
 }
