@@ -2,11 +2,17 @@
 import { env } from "process";
 
 const config = {
+  database: {
+    index: {
+      prefix: "events",
+    },
+  },
   blocks: {
     start: 14566826,
     stepSize: 10000,
   },
   contract: {
+    // TODO: This should allow many more.
     address: "0x0bC2A24ce568DAd89691116d5B34DEB6C203F342",
   },
   topics: [

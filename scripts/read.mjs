@@ -1,12 +1,15 @@
-import { persist, provision, index } from "../src/database.mjs";
+import { provision } from "../src/database.mjs";
+import config from "../config.mjs";
 
 (async () => {
   const path = "data/events";
-  const { connection } = provision(path, "test");
+  const { connection, index } = provision(path, config.database.index.prefix);
 
-  for (let { key, value } of connection.getRange({
-    start: "test:",
+  const startKey = `${index.prefix}${index.terminal}`;
+  for await (let { key, value } of connection.getRange({
+    start: startKey,
   })) {
-    console.log(value);
+    const transaction = await connection.get(value);
+    console.log(transaction);
   }
 })();

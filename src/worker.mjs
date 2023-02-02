@@ -7,18 +7,12 @@ import * as blockLogs from "@attestate/crawler-call-block-logs";
 
 import log from "./logger.mjs";
 import config from "../config.mjs";
-import { persist, provision, index } from "./database.mjs";
-import { blockNumber } from "./eth.mjs";
+import * as db from "./database.mjs";
+import * as eth from "./eth.mjs";
 
 const path = `${env.DATA_DIR}/events/`;
-// TODO: Change this value to something else
-const indexName = "test";
-const db = provision(path, indexName);
-const cursor = index(db);
-const bnCursor = (
-  (db) => (blockNumber) =>
-    persist(db, blockNumber)
-)(db);
+const conn = db.provision(path, config.database.index.prefix);
+const cursor = db.index(conn);
 
 async function loadHandler(line) {
   line = JSON.parse(line);
@@ -31,17 +25,7 @@ const crawlPath = (start, end, address, topics, stepSize) => [
   {
     name: "call-block-logs",
     extractor: {
-      module: {
-        init: blockLogs.extractor.init,
-        update: async (message) => {
-          const { fromBlock } = message.params[0];
-          // PROBLEM: If we always persist the biggest seen number, then upon
-          // crashing within a crawl, we could be missing some blocks that
-          // haven't passed this stage yet.
-          await bnCursor(parseInt(fromBlock, 16));
-          return blockLogs.extractor.update(message);
-        },
-      },
+      module: blockLogs.extractor,
       args: [start, end, address, topics, stepSize],
       output: {
         path: resolve(env.DATA_DIR, "call-block-logs-extraction"),
@@ -67,17 +51,26 @@ const crawlPath = (start, end, address, topics, stepSize) => [
 ];
 
 export async function run() {
-  const localBlockNumber = await persist(db, config.blocks.start);
-  const latestBlockNumber = await blockNumber();
-  if (localBlockNumber === latestBlockNumber) return;
-  log(`Running from start "${localBlockNumber}" to end "${latestBlockNumber}"`);
+  const blockNumber = {
+    remote: await eth.blockNumber(),
+  };
+
+  try {
+    blockNumber.local = await db.blockNumber(conn);
+  } catch (err) {
+    blockNumber.local = config.blocks.start;
+  }
+
+  if (blockNumber.local === blockNumber.remote) return;
+  log(
+    `Running from start "${blockNumber.local}" to end "${blockNumber.remote}"`
+  );
   const path = crawlPath(
-    localBlockNumber,
-    latestBlockNumber,
+    blockNumber.local,
+    blockNumber.remote,
     config?.contract?.address,
     config?.topics,
     config.blocks.stepSize
   );
   await crawl(path, config.crawler);
-  await persist(db, latestBlockNumber);
 }

@@ -17,18 +17,28 @@ export function provision(path, indexName) {
   };
 }
 
-export async function persist(configuration, epoch) {
-  if (!epoch && epoch != 0)
-    throw new Error(`epoch input must be defined: "${epoch}"`);
-  const key = "epochkey";
-  const { connection } = configuration;
-  const local = await connection.get(key);
-  if ((!local && local != 0) || epoch > local) {
-    log(`Persisting epoch: ${epoch}`);
-    await connection.put(key, epoch);
-    return epoch;
-  }
-  return local;
+export async function all(configuration) {
+  const { connection, index } = configuration;
+  const key = `${index.prefix}${index.terminal}0x`;
+  return Array.from(await connection.getRange(key));
+}
+
+export async function last(configuration) {
+  const results = await all(configuration);
+  return results[results.length - 1];
+}
+
+export async function blockNumber(configuration) {
+  const elem = await last(configuration);
+  if (!elem) throw new Error("No last element in index found");
+  const matcher = new RegExp(
+    `${configuration.index.prefix}:(0x[a-fA-F0-9]+):0x[a-fA-F0-9]+`
+  );
+  const blockNumber = elem.key.match(matcher);
+  console.log(elem.key);
+  if (!blockNumber)
+    throw new Error("No block number in last element's key found");
+  return parseInt(blockNumber[1], 16);
 }
 
 export function index(configuration) {

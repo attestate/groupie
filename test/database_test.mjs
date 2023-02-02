@@ -3,66 +3,60 @@ import { rmSync } from "fs";
 
 import test from "ava";
 
-import { provision, index, persist } from "../src/database.mjs";
+import { provision, index, all, last, blockNumber } from "../src/database.mjs";
 
-// TODO: Fix tests with new indexing scheme
-test.serial("persisting epoch", async (t) => {
+test.serial("if blockNumber fails on non existent entries", async (t) => {
   const path = "./testdb";
   const indexName = "test";
   const configuration = provision(path, indexName);
-
-  const key = "epochkey";
-  const epoch0 = await persist(configuration, 0);
-  t.is(epoch0, 0);
-  const value0 = await configuration.connection.get(key);
-  t.is(value0, 0);
-
-  const epoch1 = await persist(configuration, 0);
-  t.is(epoch1, 0);
-  const value1 = await configuration.connection.get(key);
-  t.is(value1, 0);
-
-  const epoch2 = await persist(configuration, 10);
-  t.is(epoch2, 10);
-  const value2 = await configuration.connection.get(key);
-  t.is(value2, 10);
-
-  const epoch3 = await persist(configuration, 10);
-  t.is(epoch3, 10);
-  const value3 = await configuration.connection.get(key);
-  t.is(value3, 10);
-
+  const { connection } = configuration;
+  await t.throwsAsync(async () => await blockNumber(configuration));
   rmSync(path, { recursive: true });
 });
 
-test.serial("writing of database and index", async (t) => {
+test.serial("getting last block number", async (t) => {
   const path = "./testdb";
   const indexName = "test";
   const configuration = provision(path, indexName);
-
-  const keys = ["a", "b", "c"];
-  const values = ["1", "2", "3"];
-
-  const cursor = index(configuration);
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    const value = values[i];
-    await cursor(key, value);
-  }
-
   const { connection } = configuration;
-  t.is(values[0], await connection.get(keys[0]));
-  t.is(values[1], await connection.get(keys[1]));
-  t.is(values[2], await connection.get(keys[2]));
-  t.is(`${indexName}:${keys[0]}`, await connection.get(`${indexName}_START`));
-  t.is(`${indexName}:${keys[2]}`, await connection.get(`${indexName}_END`));
-  t.is(
-    `${indexName}:${keys[1]}`,
-    await connection.get(`${indexName}:${keys[0]}`)
-  );
-  t.is(
-    `${indexName}:${keys[2]}`,
-    await connection.get(`${indexName}:${keys[1]}`)
-  );
+  const key = `${indexName}:0xfc67f3:0x00`;
+  const value = "hello world";
+  await connection.put(key, value);
+  const result = await blockNumber(configuration);
+  t.is(result, 16541683);
+  rmSync(path, { recursive: true });
+});
+
+test.serial("getting all entries", async (t) => {
+  const path = "./testdb";
+  const indexName = "test";
+  const configuration = provision(path, indexName);
+  const { connection } = configuration;
+  const key = "indexName:0xfc67f3:0x00";
+  const value = "hello world";
+  await connection.put(key, value);
+  const results = await all(configuration);
+  t.is(results[0].key, key);
+  t.is(results[0].value, value);
+  rmSync(path, { recursive: true });
+});
+
+test.serial("getting last entry", async (t) => {
+  const path = "./testdb";
+  const indexName = "test";
+  const configuration = provision(path, indexName);
+  const { connection } = configuration;
+
+  const key0 = "indexName:0xfc67f3:0x00";
+  const value0 = "hello world";
+  await connection.put(key0, value0);
+
+  const key1 = "indexName:0xfc67f3:0x01";
+  const value1 = "hallo welt";
+  await connection.put(key1, value1);
+
+  const results = await last(configuration);
+  t.is(results.key, key1);
+  t.is(results.value, value1);
   rmSync(path, { recursive: true });
 });
