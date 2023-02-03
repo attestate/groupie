@@ -6,22 +6,19 @@ import { boot as crawl } from "@attestate/crawler";
 import * as blockLogs from "@attestate/crawler-call-block-logs";
 
 import log from "./logger.mjs";
-import config from "../config.mjs";
 import * as db from "./database.mjs";
 import * as eth from "./eth.mjs";
 
-const path = `${env.DATA_DIR}/events/`;
-const conn = db.provision(path, config.database.index.prefix);
-const cursor = db.index(conn);
-
-async function loadHandler(line) {
-  line = JSON.parse(line);
-  for await (const log of line) {
-    await cursor(log);
-  }
+function loadHandler(cursor) {
+  return async (line) => {
+    line = JSON.parse(line);
+    for await (const log of line) {
+      await cursor(log);
+    }
+  };
 }
 
-const crawlPath = (start, end, address, topics, stepSize) => [
+const crawlPath = (start, end, address, topics, stepSize, cursor) => [
   {
     name: "call-block-logs",
     extractor: {
@@ -42,7 +39,7 @@ const crawlPath = (start, end, address, topics, stepSize) => [
       },
     },
     loader: {
-      handler: loadHandler,
+      handler: loadHandler(cursor),
       input: {
         path: resolve(env.DATA_DIR, "call-block-logs-transformation"),
       },
@@ -50,10 +47,13 @@ const crawlPath = (start, end, address, topics, stepSize) => [
   },
 ];
 
-export async function run() {
+export async function run(config) {
   const blockNumber = {
     remote: await eth.blockNumber(),
   };
+
+  const conn = db.provision(config.database.path, config.database.index.prefix);
+  const cursor = db.index(conn);
 
   try {
     blockNumber.local = await db.blockNumber(conn);
@@ -70,7 +70,8 @@ export async function run() {
     blockNumber.remote,
     config?.contract?.address,
     config?.topics,
-    config.blocks.stepSize
+    config.blocks.stepSize,
+    cursor
   );
   await crawl(path, config.crawler);
 }

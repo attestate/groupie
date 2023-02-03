@@ -2,9 +2,9 @@
   "name": "groupie",
   "version": "0.0.1",
   "description": "A framework for following Ethereum smart contract events and making them available locally via lmdb.",
-  "main": "src/index.mjs",
+  "main": "src/cron.mjs",
   "scripts": {
-    "dev": "DEBUG=@attestate/* node src/cron.mjs",
+    "dev": "DEBUG=@attestate/* node src/launch.mjs",
     "test": "ava"
   },
   "author": "Tim Daubenschütz <tim@daubenschuetz.de> (https://proofinprogress.com/)",
