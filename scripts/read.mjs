@@ -1,5 +1,5 @@
 import { provision } from "../src/database.mjs";
-import config from "../config.mjs";
+import config from "../config.example.mjs";
 
 (async () => {
   const path = "data/events";
