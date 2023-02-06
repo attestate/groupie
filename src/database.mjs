@@ -35,7 +35,6 @@ export async function blockNumber(configuration) {
     `${configuration.index.prefix}:(0x[a-fA-F0-9]+):0x[a-fA-F0-9]+`
   );
   const blockNumber = elem.key.match(matcher);
-  console.log(elem.key);
   if (!blockNumber)
     throw new Error("No block number in last element's key found");
   return parseInt(blockNumber[1], 16);

@@ -1,7 +1,7 @@
-// @format
-import { start } from "./cron.mjs";
-import config from "../config.mjs";
+import "dotenv/config";
+import configuration from "../config.example.mjs";
+import { launch } from "./index.mjs";
 
 (async () => {
-  await start(config);
+  await launch(configuration);
 })();
