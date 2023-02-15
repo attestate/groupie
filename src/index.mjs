@@ -1,53 +1,22 @@
 // @format
-import { Worker, isMainThread, parentPort, workerData } from "worker_threads";
-import path from "path";
-import { fileURLToPath } from "url";
+import { resolve } from "path";
+import { rm } from "fs/promises";
 
-import Ajv from "ajv";
+import * as uuid from "uuid";
+import { boot as run } from "@attestate/crawler";
 
-import { run } from "./worker.mjs";
-import configuration from "./schemata/configuration.mjs";
 import log from "./logger.mjs";
-
-const __filename = fileURLToPath(import.meta.url);
 
 function sleep(time) {
   log(`Waiting for: "${time}" ms`);
   return new Promise((resolve) => setTimeout(resolve, time));
 }
 
-export function validate(config) {
-  const ajv = new Ajv();
-  const validate = ajv.compile(configuration);
-  const valid = validate(config);
-  if (!valid) {
-    console.log(config, validate.errors);
-    throw new Error("Received invalid config");
-  }
-}
-
-export async function loop(config) {
-  validate(config);
+export async function loop(path) {
+  const config = (await import(resolve(`${path}?${uuid.v4()}`))).default;
   await run(config);
-  await sleep(config.blocks.interval);
-  return await loop(config);
-}
-
-if (!isMainThread) {
-  parentPort.on("message", async () => await launch(workerData.config));
-}
-export async function launch(config) {
-  if (isMainThread) {
-    log("Relaunching as worker thread");
-    const worker = new Worker(__filename, {
-      workerData: {
-        config,
-      },
-    });
-    worker.postMessage("start");
-  } else {
-    log("Relaunching as worker thread");
-    validate(config);
-    await loop(config);
-  }
+  await rm(config.path[0].extractor.output.path);
+  await rm(config.path[0].transformer.output.path);
+  await sleep(config.groupie.interval);
+  return await loop(path);
 }

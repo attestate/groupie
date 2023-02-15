@@ -1,7 +1,9 @@
 import "dotenv/config";
-import configuration from "../config.example.mjs";
-import { launch } from "./index.mjs";
+import { argv } from "process";
+import { loop } from "./index.mjs";
 
 (async () => {
-  await launch(configuration);
+  const configPath = process.argv[2];
+  if (!configPath) throw new Error("config path as first argument missing");
+  await loop(configPath);
 })();
