@@ -4,7 +4,7 @@
 
 > "A fan following a band's events with the hope of meeting them."
 
-**Description:** A node.js server for following Ethereum smart contract
+**Description:** A node.js crawler for following (Ethereum smart contract)
 events and making them available via LMDB.
 
 ## introduction
@@ -24,3 +24,7 @@ entries from disk using LMDB.
 ## information
 
 - [Documentation](https://attestate.com/groupie/main)
+
+## license
+
+AGPL-3.0-only
